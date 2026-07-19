@@ -70,10 +70,11 @@ fn fetch_layout(hash: &str, revision: &str) -> Result<Value, String> {
         "query": LAYOUT_QUERY,
     });
     let response = ureq::post(ORYX_GRAPHQL_URL)
-        .set("Content-Type", "application/json")
-        .send_string(&body.to_string())
+        .header("Content-Type", "application/json")
+        .send(body.to_string())
         .map_err(|e| format!("Oryx request failed: {e}"))?
-        .into_string()
+        .body_mut()
+        .read_to_string()
         .map_err(|e| format!("Oryx response unreadable: {e}"))?;
     serde_json::from_str(&response).map_err(|e| format!("Oryx response is not JSON: {e}"))
 }
