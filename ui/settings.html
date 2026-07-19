@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Ergodox Display — Settings</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: "Ubuntu", "Segoe UI", system-ui, sans-serif;
+      background: #12151c;
+      color: #cbd5e1;
+      padding: 18px;
+      font-size: 13px;
+    }
+    h1 { font-size: 14px; margin-bottom: 14px; color: #5eead4; }
+    fieldset { border: none; margin-bottom: 16px; }
+    label {
+      display: block;
+      padding: 8px 10px;
+      border: 1px solid rgba(100, 116, 139, 0.35);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    label:has(input:checked) { border-color: #5eead4; background: rgba(94, 234, 212, 0.08); }
+    label small { display: block; color: #94a3b8; margin-top: 2px; }
+    input[type="radio"] { margin-right: 6px; accent-color: #5eead4; }
+    #status { font-size: 12px; color: #94a3b8; }
+    #status.connected { color: #4ade80; }
+  </style>
+</head>
+<body>
+  <h1>Window mode</h1>
+  <fieldset id="mode">
+    <label>
+      <input type="radio" name="mode" value="overlay" />Overlay
+      <small>Always on top, clicks pass through. Move it by switching to Movable first.</small>
+    </label>
+    <label>
+      <input type="radio" name="mode" value="movable" />Movable
+      <small>Always on top, drag anywhere on the keyboard to move it.</small>
+    </label>
+  </fieldset>
+  <div id="status">keyboard: …</div>
+  <script>
+    const TAURI = window.__TAURI__;
+    const statusEl = document.getElementById("status");
+
+    function syncRadios(mode) {
+      document.querySelectorAll('input[name="mode"]').forEach((r) => {
+        r.checked = r.value === mode;
+      });
+    }
+
+    async function init() {
+      if (!TAURI) return;
+      const settings = await TAURI.core.invoke("get_settings");
+      syncRadios(settings.mode);
+      await TAURI.event.listen("mode-changed", ({ payload }) => syncRadios(payload));
+      await TAURI.event.listen("kb-event", ({ payload }) => {
+        if (payload.type !== "status") return;
+        statusEl.classList.toggle("connected", payload.connected);
+        statusEl.textContent = `keyboard: ${payload.connected ? "connected" : payload.detail || "disconnected"}`;
+      });
+      document.getElementById("mode").addEventListener("change", (e) => {
+        TAURI.core.invoke("set_mode", { mode: e.target.value });
+      });
+    }
+    init();
+  </script>
+</body>
+</html>
