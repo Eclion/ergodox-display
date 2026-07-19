@@ -146,27 +146,36 @@ function setStatus(connected, detail) {
 // The keyboard sends key events best-effort; a keyup can get lost under
 // fast typing, which would leave a key highlighted forever. Clear stale
 // highlights after a fallback delay.
-const RELEASE_FALLBACK_MS = 3000;
+const RELEASE_FALLBACK_MS = 500;
 const releaseTimers = new Map();
+// Physical key -> element currently highlighted for it. The release must
+// clear the element the press lit, even if the active layer (and therefore
+// the board a key maps to) changed between press and release.
+const litByKey = new Map();
+
+function releaseKey(mapKey) {
+  const el = litByKey.get(mapKey);
+  litByKey.delete(mapKey);
+  clearTimeout(releaseTimers.get(mapKey));
+  releaseTimers.delete(mapKey);
+  if (el) el.classList.remove("pressed", "foreign");
+}
 
 function onKey(down, row, col) {
   const idx = matrixToIndex.get(`${row},${col}`);
   if (idx === undefined) return;
+  const mapKey = `${row},${col}`;
+  releaseKey(mapKey);
+  if (!down) return;
+
   const board = boardByLayer.get(activeLayer) ?? boardByLayer.get(0);
   if (!board) return;
   const el = board.keyEls[idx];
   if (!el) return;
-  el.classList.toggle("pressed", down);
-  el.classList.toggle("foreign", down && !boardByLayer.has(activeLayer));
-
-  clearTimeout(releaseTimers.get(el));
-  releaseTimers.delete(el);
-  if (down) {
-    releaseTimers.set(
-      el,
-      setTimeout(() => el.classList.remove("pressed"), RELEASE_FALLBACK_MS)
-    );
-  }
+  el.classList.add("pressed");
+  el.classList.toggle("foreign", !boardByLayer.has(activeLayer));
+  litByKey.set(mapKey, el);
+  releaseTimers.set(mapKey, setTimeout(() => releaseKey(mapKey), RELEASE_FALLBACK_MS));
 }
 
 function setMode(newMode) {
