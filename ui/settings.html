@@ -57,11 +57,18 @@
       const settings = await TAURI.core.invoke("get_settings");
       syncRadios(settings.mode);
       await TAURI.event.listen("mode-changed", ({ payload }) => syncRadios(payload));
+      const setStatus = (connected, detail) => {
+        statusEl.classList.toggle("connected", connected);
+        statusEl.textContent = `keyboard: ${connected ? "connected" : detail || "disconnected"}`;
+      };
       await TAURI.event.listen("kb-event", ({ payload }) => {
         if (payload.type !== "status") return;
-        statusEl.classList.toggle("connected", payload.connected);
-        statusEl.textContent = `keyboard: ${payload.connected ? "connected" : payload.detail || "disconnected"}`;
+        setStatus(payload.connected, payload.detail);
       });
+      try {
+        const [status] = await TAURI.core.invoke("get_kb_state");
+        if (status.type === "status") setStatus(status.connected, status.detail);
+      } catch {}
       document.getElementById("mode").addEventListener("change", (e) => {
         TAURI.core.invoke("set_mode", { mode: e.target.value });
       });

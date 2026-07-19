@@ -8,9 +8,10 @@
 
 use hidapi::{HidApi, HidDevice};
 use serde::Serialize;
+use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 // Match any ZSA keyboard exposing the Oryx raw-HID interface rather than
 // pinning a product id: the Ergodox EZ base/shine/glow variants report
@@ -30,10 +31,27 @@ const EVENT_NAME: &str = "kb-event";
 
 #[derive(Clone, Serialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
-enum KbEvent {
+pub enum KbEvent {
     Status { connected: bool, detail: String },
     Layer { layer: u8 },
     Key { down: bool, row: u8, col: u8 },
+}
+
+/// Last connection status + active layer, so a webview that finishes loading
+/// after the HID thread has already paired can catch up (events emitted
+/// before the JS listener attaches are lost otherwise).
+pub struct KbState(pub Mutex<(KbEvent, u8)>);
+
+impl Default for KbState {
+    fn default() -> Self {
+        Self(Mutex::new((
+            KbEvent::Status {
+                connected: false,
+                detail: "starting".into(),
+            },
+            0,
+        )))
+    }
 }
 
 pub fn spawn(app: AppHandle) {
@@ -83,6 +101,14 @@ fn disconnected(detail: impl Into<String>) -> KbEvent {
 }
 
 fn emit(app: &AppHandle, event: KbEvent) {
+    let state = app.state::<KbState>();
+    let mut last = state.0.lock().unwrap();
+    match &event {
+        KbEvent::Status { .. } => last.0 = event.clone(),
+        KbEvent::Layer { layer } => last.1 = *layer,
+        KbEvent::Key { .. } => {}
+    }
+    drop(last);
     let _ = app.emit(EVENT_NAME, &event);
 }
 

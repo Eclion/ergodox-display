@@ -143,6 +143,12 @@ function setStatus(connected, detail) {
     : detail || "disconnected";
 }
 
+// The keyboard sends key events best-effort; a keyup can get lost under
+// fast typing, which would leave a key highlighted forever. Clear stale
+// highlights after a fallback delay.
+const RELEASE_FALLBACK_MS = 3000;
+const releaseTimers = new Map();
+
 function onKey(down, row, col) {
   const idx = matrixToIndex.get(`${row},${col}`);
   if (idx === undefined) return;
@@ -152,6 +158,15 @@ function onKey(down, row, col) {
   if (!el) return;
   el.classList.toggle("pressed", down);
   el.classList.toggle("foreign", down && !boardByLayer.has(activeLayer));
+
+  clearTimeout(releaseTimers.get(el));
+  releaseTimers.delete(el);
+  if (down) {
+    releaseTimers.set(
+      el,
+      setTimeout(() => el.classList.remove("pressed"), RELEASE_FALLBACK_MS)
+    );
+  }
 }
 
 function setMode(newMode) {
@@ -198,6 +213,13 @@ async function init() {
     else if (payload.type === "key") onKey(payload.down, payload.row, payload.col);
   });
   await TAURI.event.listen("mode-changed", ({ payload }) => setMode(payload));
+
+  // Catch up on status/layer events emitted before the listener attached.
+  try {
+    const [status, layer] = await TAURI.core.invoke("get_kb_state");
+    if (status.type === "status") setStatus(status.connected, status.detail);
+    setActiveLayer(layer);
+  } catch {}
 
   document.addEventListener("mousedown", (e) => {
     if (mode === "movable" && e.button === 0) {
