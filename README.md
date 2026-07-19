@@ -38,7 +38,8 @@ Then unplug/replug the keyboard once.
 
 Prerequisites: Rust (rustup), and on Linux the Tauri v2 system libraries
 (`libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev
-librsvg2-dev`) plus `libudev-dev`.
+librsvg2-dev`) plus `libudev-dev` (HID) and `libxkbcommon-dev
+libxkbcommon-x11-dev` (OS keyboard-layout detection).
 
 ```bash
 cd src-tauri
@@ -56,6 +57,10 @@ on Windows 10/11 and hidapi talks to the keyboard directly.
   (click-through: mouse events pass through the window) and back.
 - The active layer's board lights up as you switch layers; pressed keys are
   highlighted on the active layer's board.
+- Key labels follow the OS keyboard language: printable keys show the
+  character the active OS layout (e.g. AZERTY) actually produces, refreshed
+  within ~2s of switching input language. Hover the layer name to see which
+  OS layout is applied.
 - Tray icon → *Quit* to exit. The window position and mode are remembered.
 
 ## Updating the layout
