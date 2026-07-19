@@ -1,0 +1,8 @@
+# Give members of plugdev access to the raw HID interface of ZSA keyboards
+# (Ergodox EZ, Moonlander, Voyager) so Ergodox Display can pair for live
+# keypress capture.
+#
+# Install:
+#   sudo cp assets/udev/50-zsa.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
+KERNEL=="hidraw*", ATTRS{idVendor}=="3297", MODE="0664", GROUP="plugdev"

@@ -1,5 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod hid;
+
 use tauri::{WebviewUrl, WebviewWindowBuilder};
 
 const MAIN_WINDOW: &str = "main";
@@ -15,6 +17,7 @@ fn setup(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .always_on_top(true)
         .skip_taskbar(true)
         .build()?;
+    hid::spawn(app.handle().clone());
     Ok(())
 }
 
