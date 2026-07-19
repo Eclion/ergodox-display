@@ -216,16 +216,32 @@ function applyLayoutMap(payload) {
   renderBoards();
 }
 
+// The bundled layout.json is the default; an imported layout (from the
+// settings window) has the same shape and replaces it at runtime.
+let bundledLayout = null;
+
+function setLayoutData(layoutData) {
+  layers = layoutData.data.layout.revision.layers;
+  layerShort = layers.map((l) => l.title.slice(0, 3));
+  renderBoards();
+}
+
 async function init() {
   const [geometry, layoutData] = await Promise.all([
     fetch("geometry.json").then((r) => r.json()),
     fetch("layout.json").then((r) => r.json()),
   ]);
   geometryData = geometry;
-  layers = layoutData.data.layout.revision.layers;
-  layerShort = layers.map((l) => l.title.slice(0, 3));
+  bundledLayout = layoutData;
   matrixToIndex = new Map(geometry.map((k, i) => [`${k.row},${k.col}`, i]));
-  renderBoards();
+
+  let layout = bundledLayout;
+  if (TAURI) {
+    try {
+      layout = (await TAURI.core.invoke("get_layout")) ?? bundledLayout;
+    } catch {}
+  }
+  setLayoutData(layout);
 
   if (!TAURI) {
     // Plain-browser preview: simulate a few events.
@@ -247,6 +263,9 @@ async function init() {
   });
   await TAURI.event.listen("mode-changed", ({ payload }) => setMode(payload));
   await TAURI.event.listen("layout-map", ({ payload }) => applyLayoutMap(payload));
+  await TAURI.event.listen("layout-changed", ({ payload }) =>
+    setLayoutData(payload ?? bundledLayout)
+  );
 
   // Catch up on events emitted before the listeners attached.
   try {
