@@ -19,7 +19,7 @@ jobs:
             bundles: msi + nsis
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Linux system dependencies
         if: runner.os == 'Linux'
@@ -37,7 +37,7 @@ jobs:
 
       # Builds the bundles; also creates a GitHub release with the
       # installers attached when the push is a v* tag.
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -45,7 +45,7 @@ jobs:
           releaseName: ${{ github.ref_type == 'tag' && format('Ergodox Display {0}', github.ref_name) || '' }}
 
       - name: Upload artifacts (${{ matrix.bundles }})
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ergodox-display-${{ runner.os }}
           if-no-files-found: error
