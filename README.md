@@ -65,8 +65,14 @@ on Windows 10/11 and hidapi talks to the keyboard directly.
 
 ## Updating the layout
 
-After changing the layout in Oryx, re-fetch it (replace hash/revision ids
-with the ones from your Oryx URL) and copy it to the UI:
+**Via the settings window (no rebuild):** tray icon → *Settings…* → paste
+your Oryx layout URL or id (e.g. `yX3pz`, revision defaults to `latest`)
+and hit *Import*. The layout is fetched from the Oryx API, saved next to
+the app settings, applied immediately, and restored on restart. *Reset to
+built-in* returns to the bundled layout.
+
+**Updating the bundled default** (what the app falls back to) still goes
+through re-fetching the JSON at build time:
 
 ```bash
 curl -s -X POST https://oryx.zsa.io/graphql -H 'Content-Type: application/json' \

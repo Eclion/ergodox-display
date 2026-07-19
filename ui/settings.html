@@ -27,6 +27,34 @@
     input[type="radio"] { margin-right: 6px; accent-color: #5eead4; }
     #status { font-size: 12px; color: #94a3b8; }
     #status.connected { color: #4ade80; }
+    #layout-source {
+      width: 100%;
+      padding: 7px 9px;
+      border: 1px solid rgba(100, 116, 139, 0.35);
+      border-radius: 6px;
+      background: #1a1f2a;
+      color: #cbd5e1;
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    #layout-source:focus { outline: none; border-color: #5eead4; }
+    .row { display: flex; gap: 8px; margin-bottom: 8px; }
+    button {
+      padding: 6px 14px;
+      border: 1px solid rgba(100, 116, 139, 0.35);
+      border-radius: 6px;
+      background: #1a1f2a;
+      color: #cbd5e1;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    button:hover:not(:disabled) { border-color: #5eead4; color: #5eead4; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    #layout-current { font-size: 12px; color: #94a3b8; margin-bottom: 8px; }
+    #layout-current b { color: #cbd5e1; font-weight: 600; }
+    #layout-status { font-size: 11px; color: #94a3b8; min-height: 14px; display: block; }
+    #layout-status.error { color: #f87171; }
+    #layout-status.ok { color: #4ade80; }
   </style>
 </head>
 <body>
@@ -41,6 +69,16 @@
       <small>Always on top, drag anywhere on the keyboard to move it.</small>
     </label>
   </fieldset>
+  <h1>Layout</h1>
+  <div id="layout-current">displayed: …</div>
+  <input id="layout-source" type="text" spellcheck="false"
+         placeholder="Oryx layout URL or id (e.g. yX3pz or …/layouts/yX3pz/latest/0)" />
+  <div class="row">
+    <button id="layout-import">Import</button>
+    <button id="layout-reset">Reset to built-in</button>
+  </div>
+  <span id="layout-status"></span>
+
   <div id="status">keyboard: …</div>
   <script>
     const TAURI = window.__TAURI__;
@@ -71,6 +109,46 @@
       } catch {}
       document.getElementById("mode").addEventListener("change", (e) => {
         TAURI.core.invoke("set_mode", { mode: e.target.value });
+      });
+
+      const currentEl = document.getElementById("layout-current");
+      const importBtn = document.getElementById("layout-import");
+      const resetBtn = document.getElementById("layout-reset");
+      const sourceEl = document.getElementById("layout-source");
+      const layoutStatus = document.getElementById("layout-status");
+
+      const describe = (doc) => {
+        if (!doc) return "displayed: built-in layout";
+        const l = doc.data.layout;
+        return `displayed: <b>${l.title}</b> (${l.revision.layers.length} layers, rev ${l.revision.hashId})`;
+      };
+      const note = (text, cls) => {
+        layoutStatus.textContent = text;
+        layoutStatus.className = cls || "";
+      };
+      const refresh = async () => {
+        try {
+          currentEl.innerHTML = describe(await TAURI.core.invoke("get_layout"));
+        } catch {}
+      };
+      await refresh();
+      await TAURI.event.listen("layout-changed", refresh);
+
+      importBtn.addEventListener("click", async () => {
+        importBtn.disabled = true;
+        note("importing…");
+        try {
+          const meta = await TAURI.core.invoke("import_layout", { source: sourceEl.value });
+          note(`imported "${meta.title}" (${meta.layers} layers)`, "ok");
+        } catch (err) {
+          note(String(err), "error");
+        } finally {
+          importBtn.disabled = false;
+        }
+      });
+      resetBtn.addEventListener("click", async () => {
+        await TAURI.core.invoke("reset_layout");
+        note("back to the built-in layout", "ok");
       });
     }
     init();

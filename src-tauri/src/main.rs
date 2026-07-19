@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod hid;
+mod layoutstore;
 mod oskeymap;
 mod settings;
 
@@ -28,6 +29,24 @@ fn get_kb_state(state: State<hid::KbState>) -> (hid::KbEvent, u8) {
 #[tauri::command]
 fn get_layout_map(state: State<oskeymap::LayoutMapState>) -> Option<oskeymap::LayoutMap> {
     state.0.lock().unwrap().clone()
+}
+
+#[tauri::command]
+fn get_layout(state: State<layoutstore::LayoutState>) -> Option<serde_json::Value> {
+    state.0.lock().unwrap().clone()
+}
+
+#[tauri::command]
+async fn import_layout(app: AppHandle, source: String) -> Result<layoutstore::LayoutMeta, String> {
+    // async so the blocking HTTP fetch runs off the main thread
+    tauri::async_runtime::spawn_blocking(move || layoutstore::import(&app, &source))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn reset_layout(app: AppHandle) {
+    layoutstore::reset(&app);
 }
 
 #[tauri::command]
@@ -62,6 +81,9 @@ fn setup(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     app.manage(SettingsState(std::sync::Mutex::new(stored)));
     app.manage(hid::KbState::default());
     app.manage(oskeymap::LayoutMapState(std::sync::Mutex::new(None)));
+    app.manage(layoutstore::LayoutState(std::sync::Mutex::new(
+        layoutstore::load_stored(app.handle()),
+    )));
 
     let main = WebviewWindowBuilder::new(app, MAIN_WINDOW, WebviewUrl::App("index.html".into()))
         .title("Ergodox Display")
@@ -84,7 +106,7 @@ fn setup(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         WebviewUrl::App("settings.html".into()),
     )
     .title("Ergodox Display — Settings")
-    .inner_size(360.0, 280.0)
+    .inner_size(380.0, 460.0)
     .resizable(false)
     .visible(false)
     .build()?;
@@ -122,7 +144,10 @@ fn main() {
             get_settings,
             set_mode,
             get_kb_state,
-            get_layout_map
+            get_layout_map,
+            get_layout,
+            import_layout,
+            reset_layout
         ])
         .setup(|app| setup(app))
         .on_window_event(|window, event| match event {
