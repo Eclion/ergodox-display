@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod hid;
+mod oskeymap;
 mod settings;
 
 use settings::{Settings, SettingsState, WindowMode};
@@ -21,6 +22,11 @@ fn get_settings(state: State<SettingsState>) -> Settings {
 
 #[tauri::command]
 fn get_kb_state(state: State<hid::KbState>) -> (hid::KbEvent, u8) {
+    state.0.lock().unwrap().clone()
+}
+
+#[tauri::command]
+fn get_layout_map(state: State<oskeymap::LayoutMapState>) -> Option<oskeymap::LayoutMap> {
     state.0.lock().unwrap().clone()
 }
 
@@ -55,6 +61,7 @@ fn setup(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let position = stored.position;
     app.manage(SettingsState(std::sync::Mutex::new(stored)));
     app.manage(hid::KbState::default());
+    app.manage(oskeymap::LayoutMapState(std::sync::Mutex::new(None)));
 
     let main = WebviewWindowBuilder::new(app, MAIN_WINDOW, WebviewUrl::App("index.html".into()))
         .title("Ergodox Display")
@@ -105,12 +112,18 @@ fn setup(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .build(app)?;
 
     hid::spawn(app.handle().clone());
+    oskeymap::spawn(app.handle().clone());
     Ok(())
 }
 
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![get_settings, set_mode, get_kb_state])
+        .invoke_handler(tauri::generate_handler![
+            get_settings,
+            set_mode,
+            get_kb_state,
+            get_layout_map
+        ])
         .setup(|app| setup(app))
         .on_window_event(|window, event| match event {
             WindowEvent::Moved(pos) if window.label() == MAIN_WINDOW => {

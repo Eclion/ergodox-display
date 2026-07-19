@@ -42,6 +42,10 @@ const boardByLayer = new Map(); // layer position -> { root, keyEls }
 let matrixToIndex = new Map(); // "row,col" -> key index
 let activeLayer = 0;
 let mode = "movable";
+let geometryData = null;
+// KC_* -> character under the OS's active keyboard layout ("layout-map"
+// events from the backend); null until known, then labels are re-rendered.
+let osKeyMap = null;
 
 function codeLabel(action, layerNames) {
   if (!action || !action.code || action.code === "KC_NO") return "";
@@ -50,6 +54,7 @@ function codeLabel(action, layerNames) {
   if (LAYER_OPS.has(code) && layer !== null && layer !== undefined) {
     return `${code} ${layerNames[layer] ?? layer}`;
   }
+  if (osKeyMap && osKeyMap[code] !== undefined) return osKeyMap[code];
   if (LABELS[code] !== undefined) return LABELS[code];
   let m = /^KC_([A-Z])$/.exec(code);
   if (m) return m[1];
@@ -183,25 +188,44 @@ function setMode(newMode) {
   document.body.classList.toggle("movable", mode === "movable");
 }
 
+function renderBoards() {
+  // Full rebuild: also used when the OS keyboard layout changes. Any live
+  // highlight state refers to elements being thrown away, so reset it.
+  for (const timer of releaseTimers.values()) clearTimeout(timer);
+  releaseTimers.clear();
+  litByKey.clear();
+  boardByLayer.clear();
+
+  const boardsBox = document.getElementById("boards");
+  boardsBox.replaceChildren();
+  const baseLayer = layers[0];
+  for (const pos of DISPLAYED_LAYERS) {
+    const layer = layers[pos];
+    if (!layer) continue;
+    const board = buildBoard(geometryData, layer, baseLayer, layerShort);
+    boardByLayer.set(pos, board);
+    boardsBox.appendChild(board.root);
+  }
+  setActiveLayer(activeLayer);
+}
+
+function applyLayoutMap(payload) {
+  if (!payload || JSON.stringify(payload.map) === JSON.stringify(osKeyMap)) return;
+  osKeyMap = payload.map;
+  document.getElementById("layer-name").title = `OS layout: ${payload.name}`;
+  renderBoards();
+}
+
 async function init() {
   const [geometry, layoutData] = await Promise.all([
     fetch("geometry.json").then((r) => r.json()),
     fetch("layout.json").then((r) => r.json()),
   ]);
+  geometryData = geometry;
   layers = layoutData.data.layout.revision.layers;
   layerShort = layers.map((l) => l.title.slice(0, 3));
   matrixToIndex = new Map(geometry.map((k, i) => [`${k.row},${k.col}`, i]));
-
-  const boardsBox = document.getElementById("boards");
-  const baseLayer = layers[0];
-  for (const pos of DISPLAYED_LAYERS) {
-    const layer = layers[pos];
-    if (!layer) continue;
-    const board = buildBoard(geometry, layer, baseLayer, layerShort);
-    boardByLayer.set(pos, board);
-    boardsBox.appendChild(board.root);
-  }
-  setActiveLayer(0);
+  renderBoards();
 
   if (!TAURI) {
     // Plain-browser preview: simulate a few events.
@@ -222,12 +246,14 @@ async function init() {
     else if (payload.type === "key") onKey(payload.down, payload.row, payload.col);
   });
   await TAURI.event.listen("mode-changed", ({ payload }) => setMode(payload));
+  await TAURI.event.listen("layout-map", ({ payload }) => applyLayoutMap(payload));
 
-  // Catch up on status/layer events emitted before the listener attached.
+  // Catch up on events emitted before the listeners attached.
   try {
     const [status, layer] = await TAURI.core.invoke("get_kb_state");
     if (status.type === "status") setStatus(status.connected, status.detail);
     setActiveLayer(layer);
+    applyLayoutMap(await TAURI.core.invoke("get_layout_map"));
   } catch {}
 
   document.addEventListener("mousedown", (e) => {
