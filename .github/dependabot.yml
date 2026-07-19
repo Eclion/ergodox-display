@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # Keep the workflow actions on their latest versions.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule:
+      interval: weekly
+    ignore:
+      # glib (transitive, via tauri's gtk3 stack) is capped at the gtk-rs
+      # 0.18 line; the advisory GHSA-wrw7-89jp-8q8g is only fixed in
+      # glib >= 0.20, which nothing on gtk3 can reach. Without this ignore
+      # the Dependabot security-update job fails on every run with
+      # security_update_not_possible.
+      - dependency-name: glib
