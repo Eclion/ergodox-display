@@ -91,6 +91,10 @@ fn setup(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .resizable(false)
         .maximizable(false)
         .decorations(false)
+        // On Windows, undecorated windows still get a DWM drop shadow with a
+        // light border and rounded corners; disable it so the overlay is
+        // pure content. No effect on Linux/X11.
+        .shadow(false)
         .transparent(true)
         .always_on_top(true)
         .skip_taskbar(true)

@@ -12,4 +12,6 @@
 
 2026-07-19 - 18d039b..18d039b - Dependency bumps: ureq 2→3 (new request/body API), xkbcommon 0.8→0.9, windows-sys 0.59→0.61; lockfile refreshed (tauri 2.11.5, hidapi 2.6.6).
 
+2026-07-19 - 537cee0..537cee0 - Remove the Windows DWM drop shadow / light border around the borderless overlay (shadow(false) on the main window).
+
 2026-07-20 - ad8a2a1..ad8a2a1 - Keys show the shifted character as a keycap-style upper legend (e.g. 1-0 above the AZERTY &é\"'(-è_çà row); letters stay clean.
