@@ -106,6 +106,17 @@ body.movable:active {
   border-color: rgba(94, 234, 212, 0.28);
 }
 
+.key .shift {
+  font-size: 7.5px;
+  line-height: 1;
+  color: rgba(148, 163, 184, 0.85);
+  white-space: nowrap;
+}
+
+.key.pressed .shift {
+  color: #0f172a;
+}
+
 .key .tap {
   font-size: 11px;
   line-height: 1.1;
