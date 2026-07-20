@@ -11,3 +11,5 @@
 2026-07-19 - 6266df7..6266df7 - Import a layout from Oryx in the settings window (URL or id, latest revision by default); persisted, applied live, resettable to the bundled layout.
 
 2026-07-19 - 18d039b..18d039b - Dependency bumps: ureq 2→3 (new request/body API), xkbcommon 0.8→0.9, windows-sys 0.59→0.61; lockfile refreshed (tauri 2.11.5, hidapi 2.6.6).
+
+2026-07-19 - 537cee0..537cee0 - Remove the Windows DWM drop shadow / light border around the borderless overlay (shadow(false) on the main window).
