@@ -46,6 +46,9 @@ let geometryData = null;
 // KC_* -> character under the OS's active keyboard layout ("layout-map"
 // events from the backend); null until known, then labels are re-rendered.
 let osKeyMap = null;
+// KC_* -> character Shift produces on that key, where it differs from the
+// main label (keycap-style upper legend). Same lifecycle as osKeyMap.
+let osShifts = null;
 
 function codeLabel(action, layerNames) {
   if (!action || !action.code || action.code === "KC_NO") return "";
@@ -65,18 +68,24 @@ function codeLabel(action, layerNames) {
   return code.replace(/^KC_/, "").replace(/_/g, " ");
 }
 
+function shiftFor(action) {
+  return (osShifts && action?.code && osShifts[action.code]) || "";
+}
+
 function keyContent(key, baseKey, layerNames) {
   const custom = key.customLabel;
   let tap = custom || codeLabel(key.tap, layerNames);
+  let shift = custom ? "" : shiftFor(key.tap);
   let transparent = false;
   if (tap === null) {
     transparent = true;
     tap = baseKey ? (baseKey.customLabel || codeLabel(baseKey.tap, layerNames) || "") : "";
+    shift = baseKey && !baseKey.customLabel ? shiftFor(baseKey.tap) : "";
     if (tap === null) tap = "";
   }
   let hold = codeLabel(key.hold, layerNames);
   if (hold === null) hold = "";
-  return { tap: tap || "", hold: hold || "", transparent };
+  return { tap: tap || "", hold: hold || "", shift, transparent };
 }
 
 function buildBoard(geometry, layer, baseLayer, layerNames) {
@@ -105,7 +114,7 @@ function buildBoard(geometry, layer, baseLayer, layerNames) {
     el.style.width = `${geo.w * SCALE - 2}px`;
     el.style.height = `${geo.h * SCALE - 2}px`;
 
-    const { tap, hold, transparent } = keyContent(
+    const { tap, hold, shift, transparent } = keyContent(
       layer.keys[i],
       baseLayer.keys[i],
       layerNames
@@ -113,6 +122,12 @@ function buildBoard(geometry, layer, baseLayer, layerNames) {
     if (transparent) el.classList.add("trns");
     if (!tap && !hold) el.classList.add("empty");
 
+    if (shift) {
+      const shiftEl = document.createElement("span");
+      shiftEl.className = "shift";
+      shiftEl.textContent = shift;
+      el.appendChild(shiftEl);
+    }
     const tapEl = document.createElement("span");
     tapEl.className = "tap";
     if (tap.length >= 6) tapEl.classList.add("tiny");
@@ -210,8 +225,15 @@ function renderBoards() {
 }
 
 function applyLayoutMap(payload) {
-  if (!payload || JSON.stringify(payload.map) === JSON.stringify(osKeyMap)) return;
+  if (
+    !payload ||
+    (JSON.stringify(payload.map) === JSON.stringify(osKeyMap) &&
+      JSON.stringify(payload.shifts) === JSON.stringify(osShifts))
+  ) {
+    return;
+  }
   osKeyMap = payload.map;
+  osShifts = payload.shifts ?? null;
   document.getElementById("layer-name").title = `OS layout: ${payload.name}`;
   renderBoards();
 }

@@ -26,6 +26,10 @@ const EVENT_NAME: &str = "layout-map";
 pub struct LayoutMap {
     pub name: String,
     pub map: HashMap<String, String>,
+    /// Keycap-style upper legend: the character Shift produces on the key,
+    /// only where it is distinct information (absent for plain letters,
+    /// where Shift just gives the uppercase already used as the label).
+    pub shifts: HashMap<String, String>,
 }
 
 pub struct LayoutMapState(pub Mutex<Option<LayoutMap>>);
@@ -128,8 +132,11 @@ pub fn spawn(app: AppHandle) {
 /// characters. A key displays uppercase only when Shift genuinely produces
 /// the uppercase of its character (plain letter keys) — not e.g. the AZERTY
 /// é key, where Shift produces 2.
-fn build_map(chars: HashMap<&'static str, (String, String)>) -> HashMap<String, String> {
+fn build_map(
+    chars: HashMap<&'static str, (String, String)>,
+) -> (HashMap<String, String>, HashMap<String, String>) {
     let mut map = HashMap::new();
+    let mut shifts = HashMap::new();
     for (kc, (unshifted, shifted)) in &chars {
         if unshifted.is_empty() {
             continue;
@@ -140,6 +147,9 @@ fn build_map(chars: HashMap<&'static str, (String, String)>) -> HashMap<String, 
         } else {
             unshifted.clone()
         };
+        if !shifted.is_empty() && *shifted != label {
+            shifts.insert((*kc).to_string(), shifted.clone());
+        }
         map.insert((*kc).to_string(), label);
     }
     for (alias, base) in SHIFT_ALIASES {
@@ -149,7 +159,7 @@ fn build_map(chars: HashMap<&'static str, (String, String)>) -> HashMap<String, 
             }
         }
     }
-    map
+    (map, shifts)
 }
 
 /// Glyphs for dead keys, which produce no character on their own.
@@ -232,10 +242,8 @@ mod platform {
         for (kc, evdev, _) in KEYS {
             chars.insert(*kc, (key_char(&plain, *evdev), key_char(&shifted, *evdev)));
         }
-        Some(LayoutMap {
-            name,
-            map: build_map(chars),
-        })
+        let (map, shifts) = build_map(chars);
+        Some(LayoutMap { name, map, shifts })
     }
 }
 
@@ -297,10 +305,8 @@ mod platform {
                 format!("{lcid:04x}")
             };
 
-            Some(LayoutMap {
-                name,
-                map: build_map(chars),
-            })
+            let (map, shifts) = build_map(chars);
+            Some(LayoutMap { name, map, shifts })
         }
     }
 }
