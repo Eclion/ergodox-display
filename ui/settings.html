@@ -55,6 +55,13 @@
     #layout-status { font-size: 11px; color: #94a3b8; min-height: 14px; display: block; }
     #layout-status.error { color: #f87171; }
     #layout-status.ok { color: #4ade80; }
+    #app-info {
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(100, 116, 139, 0.25);
+      font-size: 11px;
+      color: #64748b;
+    }
   </style>
 </head>
 <body>
@@ -80,6 +87,7 @@
   <span id="layout-status"></span>
 
   <div id="status">keyboard: …</div>
+  <div id="app-info"></div>
   <script>
     const TAURI = window.__TAURI__;
     const statusEl = document.getElementById("status");
@@ -150,6 +158,15 @@
         await TAURI.core.invoke("reset_layout");
         note("back to the built-in layout", "ok");
       });
+
+      try {
+        const info = await TAURI.core.invoke("get_app_info");
+        const date = info.builtAt
+          ? new Date(info.builtAt * 1000).toISOString().slice(0, 10)
+          : "?";
+        document.getElementById("app-info").textContent =
+          `Ergodox Display v${info.version} · ${info.sha} · built ${date}`;
+      } catch {}
     }
     init();
   </script>
