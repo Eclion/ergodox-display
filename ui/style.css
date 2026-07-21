@@ -34,11 +34,18 @@ body.movable:active {
   margin-bottom: 6px;
   padding: 0 8px;
   font-size: 12px;
-  background: rgba(15, 18, 25, 0.55);
+  /* Opaque background + own compositing layer: with a transparent window,
+     webkit2gtk does not reliably clear the damaged region when text
+     changes, so semi-transparent repaints leave the previous layer name
+     ghosting through (seen on Ubuntu when holding MO). */
+  background: rgb(18, 22, 30);
   border-radius: 6px;
+  will-change: transform;
 }
 
 #layer-name {
+  display: inline-block;
+  min-width: 140px;
   font-weight: 600;
   color: #5eead4;
 }
