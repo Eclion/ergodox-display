@@ -15,3 +15,5 @@
 2026-07-19 - 537cee0..537cee0 - Remove the Windows DWM drop shadow / light border around the borderless overlay (shadow(false) on the main window).
 
 2026-07-20 - ad8a2a1..ad8a2a1 - Keys show the shifted character as a keycap-style upper legend (e.g. 1-0 above the AZERTY &é\"'(-è_çà row); letters stay clean.
+
+2026-07-21 - 9b00bcf..6382e51 - Fix the active-layer name ghosting over the previous one on Linux (webkit2gtk transparent-window repaint); settings window shows version, commit sha and build date.

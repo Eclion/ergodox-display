@@ -50,6 +50,15 @@ fn reset_layout(app: AppHandle) {
 }
 
 #[tauri::command]
+fn get_app_info() -> serde_json::Value {
+    serde_json::json!({
+        "version": env!("CARGO_PKG_VERSION"),
+        "sha": env!("BUILD_GIT_SHA"),
+        "builtAt": env!("BUILD_TIMESTAMP").parse::<u64>().unwrap_or(0),
+    })
+}
+
+#[tauri::command]
 fn set_mode(app: AppHandle, state: State<SettingsState>, mode: WindowMode) -> Result<(), String> {
     {
         let mut s = state.0.lock().unwrap();
@@ -110,7 +119,7 @@ fn setup(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         WebviewUrl::App("settings.html".into()),
     )
     .title("Ergodox Display — Settings")
-    .inner_size(380.0, 460.0)
+    .inner_size(380.0, 500.0)
     .resizable(false)
     .visible(false)
     .build()?;
@@ -151,7 +160,8 @@ fn main() {
             get_layout_map,
             get_layout,
             import_layout,
-            reset_layout
+            reset_layout,
+            get_app_info
         ])
         .setup(|app| setup(app))
         .on_window_event(|window, event| match event {
